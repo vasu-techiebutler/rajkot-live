@@ -1,14 +1,21 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
-import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from "react-leaflet";
+import {
+  MapContainer,
+  TileLayer,
+  Marker,
+  useMapEvents,
+  useMap,
+} from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
 // Fix default marker icon
 const defaultIcon = L.icon({
   iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
-  iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
+  iconRetinaUrl:
+    "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
   shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
   iconSize: [25, 41],
   iconAnchor: [12, 41],
@@ -51,6 +58,13 @@ export default function MapPicker({
   const [position, setPosition] = useState<[number, number] | null>(
     initialLat && initialLng ? [initialLat, initialLng] : null
   );
+
+  // Sync when parent updates lat/lng (e.g. from "Find on Map")
+  useEffect(() => {
+    if (initialLat && initialLng) {
+      setPosition([initialLat, initialLng]);
+    }
+  }, [initialLat, initialLng]);
 
   const handleLocationChange = useCallback(
     (lat: number, lng: number) => {

@@ -71,6 +71,7 @@ export default function CreatePostPage() {
   const { user } = useAuth();
   const [step, setStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [locationName, setLocationName] = useState("");
   const [locationAddress, setLocationAddress] = useState("");
   const [lat, setLat] = useState<number | null>(null);
@@ -82,6 +83,7 @@ export default function CreatePostPage() {
     handleSubmit,
     watch,
     setValue,
+    trigger,
     formState: { errors },
   } = useForm<FormData>({
     resolver: yupResolver(schema),
@@ -91,6 +93,11 @@ export default function CreatePostPage() {
   const watchedCategory = watch("category");
   const watchedTitle = watch("title");
   const watchedContent = watch("content");
+
+  const handleStep1Next = async () => {
+    const valid = await trigger(["title", "content", "category"]);
+    if (valid) setStep(2);
+  };
 
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
@@ -159,6 +166,7 @@ export default function CreatePostPage() {
       return;
     }
     setSubmitting(true);
+    setSubmitError(null);
     try {
       // Upload image to S3 first
       let imageUrls: string[] = [];
@@ -176,8 +184,12 @@ export default function CreatePostPage() {
         locationCoordinate: lat && lng ? `${lat},${lng}` : undefined,
       });
       router.push(`/post/${post.id}`);
-    } catch {
-      // handle error
+    } catch (err) {
+      setSubmitError(
+        err instanceof Error
+          ? err.message
+          : "Failed to publish post. Please try again."
+      );
     } finally {
       setSubmitting(false);
     }
@@ -282,7 +294,7 @@ export default function CreatePostPage() {
               <div className="flex justify-end">
                 <Button
                   type="button"
-                  onClick={() => setStep(2)}
+                  onClick={handleStep1Next}
                   disabled={!watchedTitle || !watchedContent}
                 >
                   Next
@@ -513,6 +525,12 @@ export default function CreatePostPage() {
                   </div>
                 )}
               </div>
+
+              {submitError && (
+                <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">
+                  {submitError}
+                </div>
+              )}
 
               <div className="flex justify-between">
                 <Button
