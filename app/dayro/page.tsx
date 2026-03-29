@@ -12,7 +12,7 @@ export default function DayroPage() {
               Folk music, bhajans, lok dayro, and cultural performances
             </p>
           </div>
-          <PostFeed category="dayro" />
+          <PostFeed category="DAYRO" />
         </div>
         <aside className="hidden lg:block w-80 flex-shrink-0">
           <div className="sticky top-20">

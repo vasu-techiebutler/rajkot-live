@@ -25,8 +25,9 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/lib/auth-context";
-import { createPost } from "@/lib/api";
-import { Category } from "@/lib/types";
+import { createPost } from "@/lib/api/postService";
+import { uploadImages } from "@/lib/api/uploadService";
+import { PostCategory } from "@/lib/types";
 import { categoryLabels, categoryColors } from "@/lib/mock-data";
 
 const MapPicker = dynamic(() => import("@/components/MapPicker"), {
@@ -50,14 +51,20 @@ const schema = yup.object({
     .required("Content is required"),
   category: yup
     .string()
-    .oneOf(["events", "food", "sports", "dayro", "general"])
+    .oneOf(["EVENT", "FOOD", "SPORTS", "DAYRO", "OTHER"])
     .required("Category is required"),
   image: yup.string().notRequired().default(""),
 });
 
 type FormData = yup.InferType<typeof schema>;
 
-const categories: Category[] = ["events", "food", "sports", "dayro", "general"];
+const categories: PostCategory[] = [
+  "EVENT",
+  "FOOD",
+  "SPORTS",
+  "DAYRO",
+  "OTHER",
+];
 
 export default function CreatePostPage() {
   const router = useRouter();
@@ -78,7 +85,7 @@ export default function CreatePostPage() {
     formState: { errors },
   } = useForm<FormData>({
     resolver: yupResolver(schema),
-    defaultValues: { category: "general" },
+    defaultValues: { category: "OTHER" },
   });
 
   const watchedCategory = watch("category");
@@ -153,15 +160,20 @@ export default function CreatePostPage() {
     }
     setSubmitting(true);
     try {
+      // Upload image to S3 first
+      let imageUrls: string[] = [];
+      if (imageFile) {
+        const uploaded = await uploadImages([imageFile]);
+        imageUrls = uploaded.map((f) => f.url);
+      }
+
       const post = await createPost({
         title: data.title,
         content: data.content,
-        category: data.category as Category,
-        image: data.image || undefined,
-        location:
-          lat && lng && locationName
-            ? { name: locationName, address: locationAddress, lat, lng }
-            : undefined,
+        category: data.category as PostCategory,
+        images: imageUrls.length > 0 ? imageUrls : undefined,
+        address: locationAddress || locationName || undefined,
+        locationCoordinate: lat && lng ? `${lat},${lng}` : undefined,
       });
       router.push(`/post/${post.id}`);
     } catch {
@@ -478,9 +490,9 @@ export default function CreatePostPage() {
                 {watchedCategory && (
                   <Badge
                     variant="outline"
-                    className={categoryColors[watchedCategory as Category]}
+                    className={categoryColors[watchedCategory as PostCategory]}
                   >
-                    {categoryLabels[watchedCategory as Category]}
+                    {categoryLabels[watchedCategory as PostCategory]}
                   </Badge>
                 )}
                 <h2 className="text-xl font-bold">{watchedTitle}</h2>

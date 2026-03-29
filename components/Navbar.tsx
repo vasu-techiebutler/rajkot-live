@@ -107,8 +107,11 @@ export default function Navbar() {
                   className="relative h-9 w-9 rounded-full"
                 >
                   <Avatar className="h-8 w-8">
-                    <AvatarImage src={user.avatar} alt={user.name} />
-                    <AvatarFallback>{user.name[0]}</AvatarFallback>
+                    <AvatarImage
+                      src={user.avatar || undefined}
+                      alt={user.displayName}
+                    />
+                    <AvatarFallback>{user.displayName[0]}</AvatarFallback>
                   </Avatar>
                 </Button>
               </DropdownMenuTrigger>
@@ -119,7 +122,7 @@ export default function Navbar() {
                     Profile
                   </Link>
                 </DropdownMenuItem>
-                {user.role === "admin" && (
+                {user.role === "ADMIN" && (
                   <DropdownMenuItem asChild>
                     <Link href="/admin">
                       <Shield className="mr-2 h-4 w-4" />

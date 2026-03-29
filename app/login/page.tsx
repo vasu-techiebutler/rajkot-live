@@ -15,7 +15,10 @@ import { useAuth } from "@/lib/auth-context";
 
 const schema = yup.object({
   email: yup.string().email("Invalid email").required("Email is required"),
-  password: yup.string().min(6, "Min 6 characters").required("Password is required"),
+  password: yup
+    .string()
+    .min(6, "Min 6 characters")
+    .required("Password is required"),
 });
 
 type FormData = yup.InferType<typeof schema>;
@@ -38,14 +41,10 @@ export default function LoginPage() {
     setLoading(true);
     setError("");
     try {
-      const user = await login(data.email, data.password);
-      if (user) {
-        router.push("/");
-      } else {
-        setError("Login failed. Please try again.");
-      }
-    } catch {
-      setError("Something went wrong.");
+      await login(data.email, data.password);
+      router.push("/");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong.");
     } finally {
       setLoading(false);
     }
@@ -91,7 +90,9 @@ export default function LoginPage() {
                 {...register("password")}
               />
               {errors.password && (
-                <p className="text-xs text-red-500">{errors.password.message}</p>
+                <p className="text-xs text-red-500">
+                  {errors.password.message}
+                </p>
               )}
             </div>
             <Button type="submit" className="w-full" disabled={loading}>
@@ -99,12 +100,11 @@ export default function LoginPage() {
               Sign In
             </Button>
             <p className="text-center text-sm text-muted-foreground">
-              Demo: Use any email like{" "}
-              <code className="text-xs bg-muted px-1 py-0.5 rounded">raj@example.com</code>
-            </p>
-            <p className="text-center text-sm text-muted-foreground">
               Don&apos;t have an account?{" "}
-              <Link href="/register" className="text-primary hover:underline font-medium">
+              <Link
+                href="/register"
+                className="text-primary hover:underline font-medium"
+              >
                 Register
               </Link>
             </p>

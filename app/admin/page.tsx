@@ -2,22 +2,21 @@
 
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { getAdminStats } from "@/lib/api";
-import { AdminStats } from "@/lib/types";
-import { Users, FileText, MessageSquare, Flag, TrendingUp } from "lucide-react";
-import { categoryLabels, categoryColors } from "@/lib/mock-data";
-import { Category } from "@/lib/types";
+import { getAdminStats } from "@/lib/api/adminService";
+import { AdminStatsData } from "@/lib/types";
+import { Users, FileText, Flag } from "lucide-react";
 
 export default function AdminDashboard() {
-  const [stats, setStats] = useState<AdminStats | null>(null);
+  const [stats, setStats] = useState<AdminStatsData | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    getAdminStats().then((data) => {
-      setStats(data);
-      setLoading(false);
-    });
+    getAdminStats()
+      .then((data) => {
+        setStats(data);
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
   }, []);
 
   if (loading || !stats) {
@@ -37,6 +36,13 @@ export default function AdminDashboard() {
       bg: "bg-blue-50",
     },
     {
+      title: "Banned Users",
+      value: stats.bannedUsers,
+      icon: Users,
+      color: "text-orange-600",
+      bg: "bg-orange-50",
+    },
+    {
       title: "Total Posts",
       value: stats.totalPosts,
       icon: FileText,
@@ -44,24 +50,34 @@ export default function AdminDashboard() {
       bg: "bg-green-50",
     },
     {
-      title: "Total Comments",
-      value: stats.totalComments,
-      icon: MessageSquare,
+      title: "Today's Posts",
+      value: stats.todayPosts,
+      icon: FileText,
       color: "text-purple-600",
       bg: "bg-purple-50",
     },
     {
-      title: "Active Reports",
+      title: "Removed Posts",
+      value: stats.removedPosts,
+      icon: FileText,
+      color: "text-gray-600",
+      bg: "bg-gray-50",
+    },
+    {
+      title: "Total Reports",
       value: stats.totalReports,
       icon: Flag,
       color: "text-red-600",
       bg: "bg-red-50",
     },
+    {
+      title: "Reported Posts",
+      value: stats.reportedPostsCount,
+      icon: Flag,
+      color: "text-amber-600",
+      bg: "bg-amber-50",
+    },
   ];
-
-  const categories = Object.entries(stats.postsByCategory).filter(
-    ([, count]) => count > 0
-  ) as [Category, number][];
 
   return (
     <div className="space-y-6">
@@ -91,97 +107,22 @@ export default function AdminDashboard() {
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Posts by Category */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <TrendingUp className="h-5 w-5" />
-              Posts by Category
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {categories.map(([cat, count]) => {
-                const max = Math.max(
-                  ...categories.map(([, c]) => c)
-                );
-                const pct = Math.round((count / max) * 100);
-                return (
-                  <div key={cat} className="space-y-1">
-                    <div className="flex items-center justify-between text-sm">
-                      <Badge
-                        className={categoryColors[cat]}
-                        variant="outline"
-                      >
-                        {categoryLabels[cat]}
-                      </Badge>
-                      <span className="font-medium">{count} posts</span>
-                    </div>
-                    <div className="h-2 rounded-full bg-muted overflow-hidden">
-                      <div
-                        className="h-full rounded-full bg-primary transition-all"
-                        style={{ width: `${pct}%` }}
-                      />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Recent Activity */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <TrendingUp className="h-5 w-5" />
-              Recent Activity (7 days)
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {stats.recentActivity.map((day) => (
-                <div
-                  key={day.date}
-                  className="flex items-center justify-between py-2 border-b last:border-0"
-                >
-                  <span className="text-sm font-medium">{day.date}</span>
-                  <div className="flex items-center gap-4">
-                    <span className="text-sm text-muted-foreground flex items-center gap-1">
-                      <FileText className="h-3 w-3" />
-                      {day.posts} posts
-                    </span>
-                    <span className="text-sm text-muted-foreground flex items-center gap-1">
-                      <Users className="h-3 w-3" />
-                      {day.users} new users
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Quick Actions */}
+      {/* Quick Info */}
       <Card>
         <CardHeader>
           <CardTitle className="text-lg">Quick Info</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
-            <div className="p-4 rounded-lg bg-muted/50">
-              <p className="text-muted-foreground">Admin Login</p>
-              <p className="font-mono mt-1">admin@rajkotlive.com</p>
-            </div>
-            <div className="p-4 rounded-lg bg-muted/50">
-              <p className="text-muted-foreground">Password</p>
-              <p className="font-mono mt-1">any password works (demo)</p>
-            </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
             <div className="p-4 rounded-lg bg-muted/50">
               <p className="text-muted-foreground">Platform</p>
               <p className="font-mono mt-1">RajkotLive v1.0</p>
+            </div>
+            <div className="p-4 rounded-lg bg-muted/50">
+              <p className="text-muted-foreground">API Base</p>
+              <p className="font-mono mt-1">
+                {process.env.NEXT_PUBLIC_API_BASE_URL || "N/A"}
+              </p>
             </div>
           </div>
         </CardContent>

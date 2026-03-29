@@ -12,7 +12,7 @@ export default function SportsPage() {
               Cricket, marathons, local tournaments, and fitness events
             </p>
           </div>
-          <PostFeed category="sports" />
+          <PostFeed category="SPORTS" />
         </div>
         <aside className="hidden lg:block w-80 flex-shrink-0">
           <div className="sticky top-20">

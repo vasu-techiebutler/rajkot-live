@@ -12,7 +12,7 @@ export default function EventsPage() {
               Festivals, melas, exhibitions, and cultural gatherings
             </p>
           </div>
-          <PostFeed category="events" />
+          <PostFeed category="EVENT" />
         </div>
         <aside className="hidden lg:block w-80 flex-shrink-0">
           <div className="sticky top-20">

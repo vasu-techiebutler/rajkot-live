@@ -6,8 +6,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { getPosts, adminDeletePost } from "@/lib/api";
-import { Post, Category } from "@/lib/types";
+import { getAdminPosts, adminDeletePost } from "@/lib/api/adminService";
+import { PostSummaryAdmin, PostCategory } from "@/lib/types";
 import { categoryLabels, categoryColors } from "@/lib/mock-data";
 import {
   Trash2,
@@ -20,17 +20,21 @@ import {
 } from "lucide-react";
 
 export default function AdminPostsPage() {
-  const [posts, setPosts] = useState<Post[]>([]);
+  const [posts, setPosts] = useState<PostSummaryAdmin[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [filterCategory, setFilterCategory] = useState<Category | "all">("all");
+  const [filterCategory, setFilterCategory] = useState<PostCategory | "all">(
+    "all"
+  );
   const [filterReported, setFilterReported] = useState(false);
 
   useEffect(() => {
-    getPosts().then((data) => {
-      setPosts(data);
-      setLoading(false);
-    });
+    getAdminPosts()
+      .then((res) => {
+        setPosts(res.posts);
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
   }, []);
 
   const handleDelete = async (postId: string) => {
@@ -40,9 +44,11 @@ export default function AdminPostsPage() {
       )
     )
       return;
-    const ok = await adminDeletePost(postId);
-    if (ok) {
+    try {
+      await adminDeletePost(postId);
       setPosts((prev) => prev.filter((p) => p.id !== postId));
+    } catch {
+      // ignore
     }
   };
 
@@ -51,12 +57,12 @@ export default function AdminPostsPage() {
       const q = search.toLowerCase();
       if (
         !p.title.toLowerCase().includes(q) &&
-        !p.author.name.toLowerCase().includes(q)
+        !p.author.displayName.toLowerCase().includes(q)
       )
         return false;
     }
     if (filterCategory !== "all" && p.category !== filterCategory) return false;
-    if (filterReported && !p.reported) return false;
+    if (filterReported && p._count.reports === 0) return false;
     return true;
   });
 
@@ -93,12 +99,12 @@ export default function AdminPostsPage() {
             <select
               value={filterCategory}
               onChange={(e) =>
-                setFilterCategory(e.target.value as Category | "all")
+                setFilterCategory(e.target.value as PostCategory | "all")
               }
               className="h-10 rounded-md border border-input bg-background px-3 text-sm"
             >
               <option value="all">All Categories</option>
-              {(Object.keys(categoryLabels) as Category[]).map((cat) => (
+              {(Object.keys(categoryLabels) as PostCategory[]).map((cat) => (
                 <option key={cat} value={cat}>
                   {categoryLabels[cat]}
                 </option>
@@ -133,19 +139,23 @@ export default function AdminPostsPage() {
           filtered.map((post) => (
             <Card
               key={post.id}
-              className={post.reported ? "border-red-300 bg-red-50/50" : ""}
+              className={
+                post._count.reports > 0 ? "border-red-300 bg-red-50/50" : ""
+              }
             >
               <CardContent className="p-4">
                 <div className="flex flex-col sm:flex-row sm:items-center gap-4">
                   {/* Post Image */}
-                  <div className="w-16 h-16 rounded-md overflow-hidden flex-shrink-0 bg-muted">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={post.image}
-                      alt={post.title}
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
+                  {post.images?.[0] && (
+                    <div className="w-16 h-16 rounded-md overflow-hidden flex-shrink-0 bg-muted">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={post.images[0]}
+                        alt={post.title}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  )}
 
                   {/* Post Info */}
                   <div className="flex-1 min-w-0">
@@ -159,27 +169,27 @@ export default function AdminPostsPage() {
                       >
                         {categoryLabels[post.category]}
                       </Badge>
-                      {post.reported && (
+                      {post._count.reports > 0 && (
                         <Badge variant="destructive" className="text-xs">
                           <Flag className="h-3 w-3 mr-1" />
-                          {post.reportCount} reports
+                          {post._count.reports} reports
                         </Badge>
                       )}
                     </div>
                     <p className="text-xs text-muted-foreground mt-1">
-                      by {post.author.name} &middot;{" "}
+                      by {post.author.displayName} &middot;{" "}
                       {new Date(post.createdAt).toLocaleDateString()}
                     </p>
                     <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
                       <span className="flex items-center gap-1">
-                        <Eye className="h-3 w-3" /> {post.views}
+                        <Eye className="h-3 w-3" /> {post.viewCount}
                       </span>
                       <span className="flex items-center gap-1">
-                        <Heart className="h-3 w-3" /> {post.likes}
+                        <Heart className="h-3 w-3" /> {post._count.likes}
                       </span>
                       <span className="flex items-center gap-1">
                         <MessageSquare className="h-3 w-3" />{" "}
-                        {post.comments.length}
+                        {post._count.comments}
                       </span>
                     </div>
                   </div>

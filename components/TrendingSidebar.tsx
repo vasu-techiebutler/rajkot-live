@@ -5,15 +5,17 @@ import Link from "next/link";
 import { TrendingUp, Eye, Heart } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Post } from "@/lib/types";
-import { getTrending } from "@/lib/api";
+import { PostSummary } from "@/lib/types";
+import { getPosts } from "@/lib/api/postService";
 import { categoryLabels, categoryColors } from "@/lib/mock-data";
 
 export default function TrendingSidebar() {
-  const [trending, setTrending] = useState<Post[]>([]);
+  const [trending, setTrending] = useState<PostSummary[]>([]);
 
   useEffect(() => {
-    getTrending().then(setTrending);
+    getPosts({ sort: "popular", limit: 5 })
+      .then((res) => setTrending(res.posts))
+      .catch(() => {});
   }, []);
 
   return (
@@ -41,17 +43,19 @@ export default function TrendingSidebar() {
               <div className="flex items-center gap-2 mt-1">
                 <Badge
                   variant="outline"
-                  className={`text-[10px] px-1.5 py-0 ${categoryColors[post.category]}`}
+                  className={`text-[10px] px-1.5 py-0 ${
+                    categoryColors[post.category]
+                  }`}
                 >
                   {categoryLabels[post.category]}
                 </Badge>
                 <span className="flex items-center gap-0.5 text-[10px] text-muted-foreground">
                   <Heart className="h-2.5 w-2.5" />
-                  {post.likes}
+                  {post._count.likes}
                 </span>
                 <span className="flex items-center gap-0.5 text-[10px] text-muted-foreground">
                   <Eye className="h-2.5 w-2.5" />
-                  {post.views}
+                  {post.viewCount}
                 </span>
               </div>
             </div>

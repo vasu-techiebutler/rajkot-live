@@ -6,14 +6,14 @@ import { Search, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import PostCard from "@/components/PostCard";
-import { Post } from "@/lib/types";
-import { searchPosts } from "@/lib/api";
+import { PostSummary } from "@/lib/types";
+import { getPosts } from "@/lib/api/postService";
 
 function SearchContent() {
   const searchParams = useSearchParams();
   const initialQuery = searchParams.get("q") || "";
   const [query, setQuery] = useState(initialQuery);
-  const [results, setResults] = useState<Post[]>([]);
+  const [results, setResults] = useState<PostSummary[]>([]);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
 
@@ -28,8 +28,12 @@ function SearchContent() {
     if (!q.trim()) return;
     setLoading(true);
     setSearched(true);
-    const data = await searchPosts(q.trim());
-    setResults(data);
+    try {
+      const res = await getPosts({ search: q.trim() });
+      setResults(res.posts);
+    } catch {
+      setResults([]);
+    }
     setLoading(false);
   };
 
@@ -66,11 +70,14 @@ function SearchContent() {
       {!loading && searched && (
         <div>
           <p className="text-sm text-muted-foreground mb-4">
-            {results.length} result{results.length !== 1 ? "s" : ""} for &quot;{initialQuery || query}&quot;
+            {results.length} result{results.length !== 1 ? "s" : ""} for &quot;
+            {initialQuery || query}&quot;
           </p>
           {results.length === 0 ? (
             <div className="text-center py-12">
-              <p className="text-muted-foreground">No results found. Try a different search.</p>
+              <p className="text-muted-foreground">
+                No results found. Try a different search.
+              </p>
             </div>
           ) : (
             <div className="grid gap-4 sm:grid-cols-2">

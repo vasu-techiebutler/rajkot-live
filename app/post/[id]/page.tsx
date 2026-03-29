@@ -28,53 +28,70 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import LocationCard from "@/components/LocationCard";
-import { Post, Comment } from "@/lib/types";
-import { getPostById, toggleLike, addComment, reportPost } from "@/lib/api";
+import { PostDetail, CommentItem } from "@/lib/types";
+import { getPostById, toggleLike, reportPost } from "@/lib/api/postService";
+import { addComment } from "@/lib/api/commentService";
 import { categoryLabels, categoryColors } from "@/lib/mock-data";
 import { useAuth } from "@/lib/auth-context";
 
 export default function PostPage() {
   const params = useParams();
   const { user } = useAuth();
-  const [post, setPost] = useState<Post | null>(null);
+  const [post, setPost] = useState<PostDetail | null>(null);
   const [loading, setLoading] = useState(true);
+  const [liked, setLiked] = useState(false);
+  const [likeCount, setLikeCount] = useState(0);
   const [commentText, setCommentText] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [reported, setReported] = useState(false);
 
   useEffect(() => {
     if (params.id) {
-      getPostById(params.id as string).then((data) => {
-        setPost(data);
-        setLoading(false);
-      });
+      getPostById(params.id as string)
+        .then((data) => {
+          setPost(data);
+          setLikeCount(data._count.likes);
+          setLoading(false);
+        })
+        .catch(() => setLoading(false));
     }
   }, [params.id]);
 
   const handleLike = async () => {
     if (!post || !user) return;
-    const updated = await toggleLike(post.id);
-    if (updated) setPost(updated);
+    try {
+      const result = await toggleLike(post.id);
+      setLiked(result.liked);
+      setLikeCount((prev) => (result.liked ? prev + 1 : prev - 1));
+    } catch {
+      // ignore
+    }
   };
 
   const handleComment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!post || !user || !commentText.trim()) return;
     setSubmitting(true);
-    const comment = await addComment(post.id, commentText.trim());
-    if (comment) {
+    try {
+      const comment = await addComment(post.id, commentText.trim());
       setPost((prev) =>
         prev ? { ...prev, comments: [...prev.comments, comment] } : prev
       );
       setCommentText("");
+    } catch {
+      // ignore
     }
     setSubmitting(false);
   };
 
   const handleReport = async () => {
     if (!post) return;
-    await reportPost(post.id);
-    setReported(true);
+    try {
+      await reportPost(post.id);
+      setReported(true);
+    } catch {
+      // ignore
+    }
   };
 
   const handleShare = () => {
@@ -110,6 +127,8 @@ export default function PostPage() {
     );
   }
 
+  const image = post.images?.[0];
+
   return (
     <div className="container mx-auto px-4 py-6 max-w-3xl">
       <Link
@@ -121,10 +140,10 @@ export default function PostPage() {
       </Link>
 
       <article>
-        {post.image && (
+        {image && (
           <div className="rounded-lg overflow-hidden mb-6">
             <img
-              src={post.image}
+              src={image}
               alt={post.title}
               className="w-full h-64 sm:h-80 object-cover"
             />
@@ -143,8 +162,8 @@ export default function PostPage() {
         <div className="flex items-center gap-3 mb-6">
           <Link href={`/profile/${post.author.username}`}>
             <Avatar className="h-10 w-10">
-              <AvatarImage src={post.author.avatar} />
-              <AvatarFallback>{post.author.name[0]}</AvatarFallback>
+              <AvatarImage src={post.author.avatar || undefined} />
+              <AvatarFallback>{post.author.displayName[0]}</AvatarFallback>
             </Avatar>
           </Link>
           <div>
@@ -152,7 +171,7 @@ export default function PostPage() {
               href={`/profile/${post.author.username}`}
               className="font-medium hover:underline"
             >
-              {post.author.name}
+              {post.author.displayName}
             </Link>
             <p className="text-sm text-muted-foreground">
               {formatDistanceToNow(new Date(post.createdAt), {
@@ -163,7 +182,7 @@ export default function PostPage() {
         </div>
 
         <div className="prose prose-neutral max-w-none mb-6">
-          {post.content.split("\n").map((paragraph, i) => (
+          {post.content.split("\n").map((paragraph: string, i: number) => (
             <p key={i} className="mb-3 leading-relaxed">
               {paragraph}
             </p>
@@ -173,17 +192,15 @@ export default function PostPage() {
         {/* Actions */}
         <div className="flex items-center gap-4 mb-6">
           <Button
-            variant={post.likedByCurrentUser ? "default" : "outline"}
+            variant={liked ? "default" : "outline"}
             size="sm"
             onClick={handleLike}
             disabled={!user}
           >
             <Heart
-              className={`h-4 w-4 mr-1.5 ${
-                post.likedByCurrentUser ? "fill-current" : ""
-              }`}
+              className={`h-4 w-4 mr-1.5 ${liked ? "fill-current" : ""}`}
             />
-            {post.likes}
+            {likeCount}
           </Button>
           <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
             <MessageCircle className="h-4 w-4" />
@@ -191,7 +208,7 @@ export default function PostPage() {
           </span>
           <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
             <Eye className="h-4 w-4" />
-            {post.views}
+            {post.viewCount}
           </span>
           <div className="flex-1" />
           <Button variant="ghost" size="sm" onClick={handleShare}>
@@ -236,9 +253,16 @@ export default function PostPage() {
         </div>
 
         {/* Location */}
-        {post.location && (
+        {post.address && post.locationCoordinate && (
           <div className="mb-6">
-            <LocationCard location={post.location} />
+            <LocationCard
+              location={{
+                name: post.address,
+                address: post.address,
+                lat: parseFloat(post.locationCoordinate.split(",")[0]) || 0,
+                lng: parseFloat(post.locationCoordinate.split(",")[1]) || 0,
+              }}
+            />
           </div>
         )}
 
@@ -254,8 +278,8 @@ export default function PostPage() {
             <form onSubmit={handleComment} className="mb-6">
               <div className="flex gap-3">
                 <Avatar className="h-8 w-8 flex-shrink-0">
-                  <AvatarImage src={user.avatar} />
-                  <AvatarFallback>{user.name[0]}</AvatarFallback>
+                  <AvatarImage src={user.avatar || undefined} />
+                  <AvatarFallback>{user.displayName[0]}</AvatarFallback>
                 </Avatar>
                 <div className="flex-1">
                   <Textarea
@@ -296,12 +320,14 @@ export default function PostPage() {
           )}
 
           <div className="space-y-4">
-            {post.comments.map((comment: Comment) => (
+            {post.comments.map((comment: CommentItem) => (
               <div key={comment.id} className="flex gap-3">
                 <Link href={`/profile/${comment.author.username}`}>
                   <Avatar className="h-8 w-8">
-                    <AvatarImage src={comment.author.avatar} />
-                    <AvatarFallback>{comment.author.name[0]}</AvatarFallback>
+                    <AvatarImage src={comment.author.avatar || undefined} />
+                    <AvatarFallback>
+                      {comment.author.displayName[0]}
+                    </AvatarFallback>
                   </Avatar>
                 </Link>
                 <div className="flex-1 bg-muted/50 rounded-lg p-3">
@@ -310,7 +336,7 @@ export default function PostPage() {
                       href={`/profile/${comment.author.username}`}
                       className="text-sm font-medium hover:underline"
                     >
-                      {comment.author.name}
+                      {comment.author.displayName}
                     </Link>
                     <span className="text-xs text-muted-foreground">
                       {formatDistanceToNow(new Date(comment.createdAt), {
@@ -319,6 +345,39 @@ export default function PostPage() {
                     </span>
                   </div>
                   <p className="text-sm">{comment.content}</p>
+                  {/* Nested replies */}
+                  {comment.replies && comment.replies.length > 0 && (
+                    <div className="mt-3 space-y-3 pl-4 border-l-2 border-muted">
+                      {comment.replies.map((reply: CommentItem) => (
+                        <div key={reply.id} className="flex gap-2">
+                          <Avatar className="h-6 w-6">
+                            <AvatarImage
+                              src={reply.author.avatar || undefined}
+                            />
+                            <AvatarFallback>
+                              {reply.author.displayName[0]}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-medium">
+                                {reply.author.displayName}
+                              </span>
+                              <span className="text-[10px] text-muted-foreground">
+                                {formatDistanceToNow(
+                                  new Date(reply.createdAt),
+                                  {
+                                    addSuffix: true,
+                                  }
+                                )}
+                              </span>
+                            </div>
+                            <p className="text-xs mt-0.5">{reply.content}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             ))}

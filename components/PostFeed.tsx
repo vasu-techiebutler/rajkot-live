@@ -2,24 +2,26 @@
 
 import { useState, useEffect } from "react";
 import PostCard from "./PostCard";
-import { Post, Category } from "@/lib/types";
-import { getPosts } from "@/lib/api";
+import { PostSummary, PostCategory } from "@/lib/types";
+import { getPosts } from "@/lib/api/postService";
 import { Loader2 } from "lucide-react";
 
 interface PostFeedProps {
-  category?: Category;
+  category?: PostCategory;
 }
 
 export default function PostFeed({ category }: PostFeedProps) {
-  const [posts, setPosts] = useState<Post[]>([]);
+  const [posts, setPosts] = useState<PostSummary[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     setLoading(true);
-    getPosts(category).then((data) => {
-      setPosts(data);
-      setLoading(false);
-    });
+    getPosts({ category, sort: "latest" })
+      .then((res) => {
+        setPosts(res.posts);
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
   }, [category]);
 
   if (loading) {

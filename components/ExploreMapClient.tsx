@@ -2,18 +2,24 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { MapContainer, TileLayer, CircleMarker, Popup, useMap } from "react-leaflet";
+import {
+  MapContainer,
+  TileLayer,
+  CircleMarker,
+  Popup,
+  useMap,
+} from "react-leaflet";
 import { LocateFixed } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { Post, Category } from "@/lib/types";
+import { PostSummary, PostCategory } from "@/lib/types";
 import { categoryLabels, categoryMapColors } from "@/lib/mock-data";
 import "leaflet/dist/leaflet.css";
 
 interface ExploreMapClientProps {
-  posts: Post[];
+  posts: PostSummary[];
 }
 
 function LocateButton() {
@@ -35,7 +41,12 @@ function LocateButton() {
   return (
     <div className="leaflet-top leaflet-right" style={{ zIndex: 1000 }}>
       <div className="leaflet-control m-2">
-        <Button size="sm" variant="secondary" className="shadow-md" onClick={handleLocate}>
+        <Button
+          size="sm"
+          variant="secondary"
+          className="shadow-md"
+          onClick={handleLocate}
+        >
           <LocateFixed className="h-4 w-4 mr-1" />
           My Location
         </Button>
@@ -44,14 +55,14 @@ function LocateButton() {
   );
 }
 
-const allCategories: Category[] = ["events", "food", "sports", "dayro"];
+const allCategories: PostCategory[] = ["EVENT", "FOOD", "SPORTS", "DAYRO"];
 
 export default function ExploreMapClient({ posts }: ExploreMapClientProps) {
-  const [activeCategories, setActiveCategories] = useState<Set<Category>>(
+  const [activeCategories, setActiveCategories] = useState<Set<PostCategory>>(
     new Set(allCategories)
   );
 
-  const toggleCategory = (cat: Category) => {
+  const toggleCategory = (cat: PostCategory) => {
     setActiveCategories((prev) => {
       const next = new Set(prev);
       if (next.has(cat)) {
@@ -79,11 +90,14 @@ export default function ExploreMapClient({ posts }: ExploreMapClientProps) {
         />
         <LocateButton />
 
-        {filteredPosts.map((post) =>
-          post.location ? (
+        {filteredPosts.map((post) => {
+          const coords = post.locationCoordinate?.split(",");
+          const pLat = coords ? parseFloat(coords[0]) : NaN;
+          const pLng = coords ? parseFloat(coords[1]) : NaN;
+          return !isNaN(pLat) && !isNaN(pLng) ? (
             <CircleMarker
               key={post.id}
-              center={[post.location.lat, post.location.lng]}
+              center={[pLat, pLng]}
               radius={10}
               pathOptions={{
                 color: categoryMapColors[post.category],
@@ -108,7 +122,7 @@ export default function ExploreMapClient({ posts }: ExploreMapClientProps) {
                     {post.title}
                   </h3>
                   <p className="text-xs text-muted-foreground mb-2">
-                    by {post.author.name}
+                    by {post.author.displayName}
                   </p>
                   <Link href={`/post/${post.id}`}>
                     <Button size="sm" className="w-full text-xs h-7">
@@ -118,8 +132,8 @@ export default function ExploreMapClient({ posts }: ExploreMapClientProps) {
                 </div>
               </Popup>
             </CircleMarker>
-          ) : null
-        )}
+          ) : null;
+        })}
       </MapContainer>
 
       {/* Category filter overlay */}

@@ -7,25 +7,26 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
-  getAllUsersIncludingBanned,
+  getAdminUsers,
   adminDeleteUser,
-  adminBanUser,
-  adminUnbanUser,
-} from "@/lib/api";
-import { User } from "@/lib/types";
+  toggleBanUser,
+} from "@/lib/api/adminService";
+import { AdminUser } from "@/lib/types";
 import { Trash2, Search, Ban, Shield, UserCheck } from "lucide-react";
 
 export default function AdminUsersPage() {
-  const [users, setUsers] = useState<User[]>([]);
+  const [users, setUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
 
   const loadUsers = () => {
     setLoading(true);
-    getAllUsersIncludingBanned().then((data) => {
-      setUsers(data);
-      setLoading(false);
-    });
+    getAdminUsers()
+      .then((res) => {
+        setUsers(res.users);
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
   };
 
   useEffect(() => {
@@ -39,36 +40,35 @@ export default function AdminUsersPage() {
       )
     )
       return;
-    const ok = await adminDeleteUser(userId);
-    if (ok) {
+    try {
+      await adminDeleteUser(userId);
       setUsers((prev) => prev.filter((u) => u.id !== userId));
+    } catch {
+      // ignore
     }
   };
 
-  const handleBan = async (userId: string) => {
-    const ok = await adminBanUser(userId);
-    if (ok) {
+  const handleToggleBan = async (userId: string) => {
+    try {
+      const result = await toggleBanUser(userId);
       setUsers((prev) =>
-        prev.map((u) => (u.id === userId ? { ...u, banned: true } : u))
+        prev.map((u) =>
+          u.id === userId
+            ? { ...u, status: result.status as AdminUser["status"] }
+            : u
+        )
       );
-    }
-  };
-
-  const handleUnban = async (userId: string) => {
-    const ok = await adminUnbanUser(userId);
-    if (ok) {
-      setUsers((prev) =>
-        prev.map((u) => (u.id === userId ? { ...u, banned: false } : u))
-      );
+    } catch {
+      // ignore
     }
   };
 
   const filtered = users.filter((u) => {
-    if (u.role === "admin") return false;
+    if (u.role === "ADMIN") return false;
     if (search) {
       const q = search.toLowerCase();
       return (
-        u.name.toLowerCase().includes(q) ||
+        u.displayName.toLowerCase().includes(q) ||
         u.username.toLowerCase().includes(q) ||
         u.email.toLowerCase().includes(q)
       );
@@ -121,84 +121,95 @@ export default function AdminUsersPage() {
             </CardContent>
           </Card>
         ) : (
-          filtered.map((user) => (
-            <Card
-              key={user.id}
-              className={
-                user.banned ? "border-red-300 bg-red-50/50 opacity-75" : ""
-              }
-            >
-              <CardContent className="p-4">
-                <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-                  {/* Avatar */}
-                  <Avatar className="h-12 w-12">
-                    <AvatarImage src={user.avatar} alt={user.name} />
-                    <AvatarFallback>{user.name[0]}</AvatarFallback>
-                  </Avatar>
+          filtered.map((user) => {
+            const isBanned = user.status === "INACTIVE";
+            return (
+              <Card
+                key={user.id}
+                className={
+                  isBanned ? "border-red-300 bg-red-50/50 opacity-75" : ""
+                }
+              >
+                <CardContent className="p-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                    {/* Avatar */}
+                    <Avatar className="h-12 w-12">
+                      <AvatarImage
+                        src={user.avatar || undefined}
+                        alt={user.displayName}
+                      />
+                      <AvatarFallback>{user.displayName[0]}</AvatarFallback>
+                    </Avatar>
 
-                  {/* User Info */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="font-semibold text-sm">{user.name}</h3>
-                      <span className="text-xs text-muted-foreground">
-                        @{user.username}
-                      </span>
-                      {user.role === "admin" && (
-                        <Badge className="bg-amber-100 text-amber-800 text-xs">
-                          <Shield className="h-3 w-3 mr-1" />
-                          Admin
-                        </Badge>
-                      )}
-                      {user.banned && (
-                        <Badge variant="destructive" className="text-xs">
-                          <Ban className="h-3 w-3 mr-1" />
-                          Banned
-                        </Badge>
-                      )}
+                    {/* User Info */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h3 className="font-semibold text-sm">
+                          {user.displayName}
+                        </h3>
+                        <span className="text-xs text-muted-foreground">
+                          @{user.username}
+                        </span>
+                        {user.role === "ADMIN" && (
+                          <Badge className="bg-amber-100 text-amber-800 text-xs">
+                            <Shield className="h-3 w-3 mr-1" />
+                            Admin
+                          </Badge>
+                        )}
+                        {isBanned && (
+                          <Badge variant="destructive" className="text-xs">
+                            <Ban className="h-3 w-3 mr-1" />
+                            Banned
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {user.email}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Joined {new Date(user.createdAt).toLocaleDateString()}
+                        {" · "}
+                        {user._count.posts} posts · {user._count.comments}{" "}
+                        comments
+                      </p>
                     </div>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {user.email}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      Joined {new Date(user.createdAt).toLocaleDateString()}
-                    </p>
-                  </div>
 
-                  {/* Actions */}
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    {user.banned ? (
+                    {/* Actions */}
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      {isBanned ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleToggleBan(user.id)}
+                        >
+                          <UserCheck className="h-4 w-4 mr-1" />
+                          Unban
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleToggleBan(user.id)}
+                          className="text-orange-600 border-orange-300 hover:bg-orange-50"
+                        >
+                          <Ban className="h-4 w-4 mr-1" />
+                          Ban
+                        </Button>
+                      )}
                       <Button
-                        variant="outline"
+                        variant="destructive"
                         size="sm"
-                        onClick={() => handleUnban(user.id)}
+                        onClick={() => handleDelete(user.id, user.displayName)}
                       >
-                        <UserCheck className="h-4 w-4 mr-1" />
-                        Unban
+                        <Trash2 className="h-4 w-4 mr-1" />
+                        Delete
                       </Button>
-                    ) : (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleBan(user.id)}
-                        className="text-orange-600 border-orange-300 hover:bg-orange-50"
-                      >
-                        <Ban className="h-4 w-4 mr-1" />
-                        Ban
-                      </Button>
-                    )}
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={() => handleDelete(user.id, user.name)}
-                    >
-                      <Trash2 className="h-4 w-4 mr-1" />
-                      Delete
-                    </Button>
+                    </div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))
+                </CardContent>
+              </Card>
+            );
+          })
         )}
       </div>
     </div>

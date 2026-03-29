@@ -14,14 +14,23 @@ import { Label } from "@/components/ui/label";
 import { useAuth } from "@/lib/auth-context";
 
 const schema = yup.object({
-  name: yup.string().min(2, "Min 2 characters").required("Name is required"),
+  displayName: yup
+    .string()
+    .min(2, "Min 2 characters")
+    .max(50)
+    .required("Name is required"),
   username: yup
     .string()
     .min(3, "Min 3 characters")
-    .matches(/^[a-z0-9_]+$/, "Only lowercase letters, numbers, underscores")
+    .max(30)
+    .matches(/^[a-zA-Z0-9_]+$/, "Only letters, numbers, underscores")
     .required("Username is required"),
   email: yup.string().email("Invalid email").required("Email is required"),
-  password: yup.string().min(6, "Min 6 characters").required("Password is required"),
+  password: yup
+    .string()
+    .min(6, "Min 6 characters")
+    .max(100)
+    .required("Password is required"),
 });
 
 type FormData = yup.InferType<typeof schema>;
@@ -44,10 +53,19 @@ export default function RegisterPage() {
     setLoading(true);
     setError("");
     try {
-      await authRegister(data.name, data.username, data.email, data.password);
+      await authRegister({
+        displayName: data.displayName,
+        username: data.username,
+        email: data.email,
+        password: data.password,
+      });
       router.push("/");
-    } catch {
-      setError("Registration failed. Please try again.");
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Registration failed. Please try again."
+      );
     } finally {
       setLoading(false);
     }
@@ -73,17 +91,29 @@ export default function RegisterPage() {
               </div>
             )}
             <div className="space-y-2">
-              <Label htmlFor="name">Full Name</Label>
-              <Input id="name" placeholder="Raj Patel" {...register("name")} />
-              {errors.name && (
-                <p className="text-xs text-red-500">{errors.name.message}</p>
+              <Label htmlFor="displayName">Full Name</Label>
+              <Input
+                id="displayName"
+                placeholder="Raj Patel"
+                {...register("displayName")}
+              />
+              {errors.displayName && (
+                <p className="text-xs text-red-500">
+                  {errors.displayName.message}
+                </p>
               )}
             </div>
             <div className="space-y-2">
               <Label htmlFor="username">Username</Label>
-              <Input id="username" placeholder="rajpatel" {...register("username")} />
+              <Input
+                id="username"
+                placeholder="rajpatel"
+                {...register("username")}
+              />
               {errors.username && (
-                <p className="text-xs text-red-500">{errors.username.message}</p>
+                <p className="text-xs text-red-500">
+                  {errors.username.message}
+                </p>
               )}
             </div>
             <div className="space-y-2">
@@ -107,7 +137,9 @@ export default function RegisterPage() {
                 {...register("password")}
               />
               {errors.password && (
-                <p className="text-xs text-red-500">{errors.password.message}</p>
+                <p className="text-xs text-red-500">
+                  {errors.password.message}
+                </p>
               )}
             </div>
             <Button type="submit" className="w-full" disabled={loading}>
@@ -116,7 +148,10 @@ export default function RegisterPage() {
             </Button>
             <p className="text-center text-sm text-muted-foreground">
               Already have an account?{" "}
-              <Link href="/login" className="text-primary hover:underline font-medium">
+              <Link
+                href="/login"
+                className="text-primary hover:underline font-medium"
+              >
                 Sign In
               </Link>
             </p>

@@ -5,13 +5,19 @@ import dynamic from "next/dynamic";
 import { MapPin, Navigation, ExternalLink } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Location } from "@/lib/types";
 import { haversineDistance } from "@/lib/geo";
 
 const MapView = dynamic(() => import("./MapView"), { ssr: false });
 
+interface LocationData {
+  name: string;
+  address: string;
+  lat: number;
+  lng: number;
+}
+
 interface LocationCardProps {
-  location: Location;
+  location: LocationData;
 }
 
 export default function LocationCard({ location }: LocationCardProps) {

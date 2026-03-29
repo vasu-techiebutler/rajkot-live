@@ -12,7 +12,7 @@ export default function FoodPage() {
               Street food, restaurants, food trucks, and hidden gems
             </p>
           </div>
-          <PostFeed category="food" />
+          <PostFeed category="FOOD" />
         </div>
         <aside className="hidden lg:block w-80 flex-shrink-0">
           <div className="sticky top-20">
